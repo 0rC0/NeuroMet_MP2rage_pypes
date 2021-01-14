@@ -390,11 +390,13 @@ class NeuroMet():
         neuromet_fs.connect(freesurfer, 'segment_hp.subjects_dir', sink, '@recon_all')
         #neuromet_fs.connect(out_dir_source, 'out_dir', copy_freesurfer_dir, 'out_dir')
 
-        neuromet_fs.connect(freesurfer, 'segment_hp.subject_id', qdec, 'devnull')
+        #ToDo:
+        # 04.12.2020 QDec + Adjust volumes. It hang if qdec is in a workflow, works a single interface
+        #neuromet_fs.connect(freesurfer, 'segment_hp.subject_id', qdec, 'devnull')
         #neuromet_fs.connect(datasource, 'base_directory', qdec, 'basedir')
-        neuromet_fs.connect(qdec, 'stats_directory', adj_vol, 'stats_directory')
-        neuromet_fs.connect(qdec, 'stats_directory', sink, '@stat_dir')
-        neuromet_fs.connect(adj_vol, 'adjusted_stats', sink, '@adj_stats')
+        #neuromet_fs.connect(qdec, 'stats_directory', adj_vol, 'stats_directory')
+        #neuromet_fs.connect(qdec, 'stats_directory', sink, '@stat_dir')
+        #neuromet_fs.connect(adj_vol, 'adjusted_stats', sink, '@adj_stats')
 
 
 
