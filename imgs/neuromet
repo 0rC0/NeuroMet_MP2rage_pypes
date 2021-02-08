@@ -1,43 +1,46 @@
-digraph NeuroMET{
-  label="NeuroMET";
-  NeuroMET_unidensource[label="unidensource (utility)", shape=box3d,style=filled, color=black, colorscheme=greys7 fillcolor=2];
-  NeuroMET_infosource[label="infosource (utility)", shape=box3d,style=filled, color=black, colorscheme=greys7 fillcolor=2];
-  NeuroMET_datasource[label="datasource (io)", style=filled, fillcolor="#FFFFC8"];
-  NeuroMET_sink[label="sink (io)", style=filled, fillcolor="#FFFFC8"];
-  NeuroMET_unidensource -> NeuroMET_datasource;
-  NeuroMET_infosource -> NeuroMET_datasource;
-  subgraph cluster_NeuroMET_Segment {
+digraph workflow{
+  label="workflow";
+  workflow_unidensource[label="unidensource (utility)", shape=box3d,style=filled, color=black, colorscheme=greys7 fillcolor=2];
+  workflow_infosource[label="infosource (utility)", shape=box3d,style=filled, color=black, colorscheme=greys7 fillcolor=2];
+  workflow_split_sub_str[label="split_sub_str (utility)", style=filled, fillcolor="#FFFFC8"];
+  workflow_datasource[label="datasource (io)", style=filled, fillcolor="#FFFFC8"];
+  workflow_sink[label="sink (io)", style=filled, fillcolor="#FFFFC8"];
+  workflow_unidensource -> workflow_datasource;
+  workflow_infosource -> workflow_split_sub_str;
+  workflow_split_sub_str -> workflow_datasource;
+  workflow_split_sub_str -> workflow_datasource;
+  subgraph cluster_workflow_Segment {
       edge [color="#0000FF"];
       style=filled;
       fillcolor="#B4B4FF";
       label="Segment";
-    NeuroMET_Segment_ro[label="ro (fsl)", style=filled, fillcolor="#E6E6FF"];
-    NeuroMET_Segment_gunzip[label="gunzip (misc)", style=filled, fillcolor="#E6E6FF"];
-    NeuroMET_Segment_seg[label="seg (spm)", style=filled, fillcolor="#E6E6FF"];
-    NeuroMET_Segment_spm_tissues_split[label="spm_tissues_split (utility)", style=filled, fillcolor="#E6E6FF"];
-    NeuroMET_Segment_ro -> NeuroMET_Segment_gunzip;
-    NeuroMET_Segment_gunzip -> NeuroMET_Segment_seg;
-    NeuroMET_Segment_seg -> NeuroMET_Segment_spm_tissues_split;
+    workflow_Segment_ro[label="ro (fsl)", style=filled, fillcolor="#E6E6FF"];
+    workflow_Segment_gunzip[label="gunzip (misc)", style=filled, fillcolor="#E6E6FF"];
+    workflow_Segment_seg[label="seg (spm)", style=filled, fillcolor="#E6E6FF"];
+    workflow_Segment_spm_tissues_split[label="spm_tissues_split (utility)", style=filled, fillcolor="#E6E6FF"];
+    workflow_Segment_ro -> workflow_Segment_gunzip;
+    workflow_Segment_gunzip -> workflow_Segment_seg;
+    workflow_Segment_seg -> workflow_Segment_spm_tissues_split;
   }
-  subgraph cluster_NeuroMET_Mask_UNI {
+  subgraph cluster_workflow_Mask_UNI {
       edge [color="#0000FF"];
       style=filled;
       fillcolor="#B4B4FF";
       label="Mask_UNI";
-    NeuroMET_Mask_UNI_sum_tissues1[label="sum_tissues1 (fsl)", style=filled, fillcolor="#E6E6FF"];
-    NeuroMET_Mask_UNI_sum_tissues2[label="sum_tissues2 (fsl)", style=filled, fillcolor="#E6E6FF"];
-    NeuroMET_Mask_UNI_gen_mask[label="gen_mask (fsl)", style=filled, fillcolor="#E6E6FF"];
-    NeuroMET_Mask_UNI_sum_tissues1 -> NeuroMET_Mask_UNI_sum_tissues2;
-    NeuroMET_Mask_UNI_sum_tissues2 -> NeuroMET_Mask_UNI_gen_mask;
+    workflow_Mask_UNI_sum_tissues1[label="sum_tissues1 (fsl)", style=filled, fillcolor="#E6E6FF"];
+    workflow_Mask_UNI_sum_tissues2[label="sum_tissues2 (fsl)", style=filled, fillcolor="#E6E6FF"];
+    workflow_Mask_UNI_gen_mask[label="gen_mask (fsl)", style=filled, fillcolor="#E6E6FF"];
+    workflow_Mask_UNI_sum_tissues1 -> workflow_Mask_UNI_sum_tissues2;
+    workflow_Mask_UNI_sum_tissues2 -> workflow_Mask_UNI_gen_mask;
   }
-  NeuroMET_datasource -> NeuroMET_Segment_ro;
-  NeuroMET_Segment_spm_tissues_split -> NeuroMET_Mask_UNI_sum_tissues1;
-  NeuroMET_Segment_spm_tissues_split -> NeuroMET_Mask_UNI_sum_tissues1;
-  NeuroMET_Segment_spm_tissues_split -> NeuroMET_Mask_UNI_sum_tissues2;
-  NeuroMET_Segment_spm_tissues_split -> NeuroMET_sink;
-  NeuroMET_Segment_spm_tissues_split -> NeuroMET_sink;
-  NeuroMET_Segment_spm_tissues_split -> NeuroMET_sink;
-  NeuroMET_Segment_seg -> NeuroMET_sink;
-  NeuroMET_Segment_ro -> NeuroMET_sink;
-  NeuroMET_Mask_UNI_gen_mask -> NeuroMET_sink;
+  workflow_datasource -> workflow_Segment_ro;
+  workflow_Segment_spm_tissues_split -> workflow_Mask_UNI_sum_tissues1;
+  workflow_Segment_spm_tissues_split -> workflow_Mask_UNI_sum_tissues1;
+  workflow_Segment_spm_tissues_split -> workflow_Mask_UNI_sum_tissues2;
+  workflow_Segment_spm_tissues_split -> workflow_sink;
+  workflow_Segment_spm_tissues_split -> workflow_sink;
+  workflow_Segment_spm_tissues_split -> workflow_sink;
+  workflow_Segment_seg -> workflow_sink;
+  workflow_Segment_ro -> workflow_sink;
+  workflow_Mask_UNI_gen_mask -> workflow_sink;
 }
