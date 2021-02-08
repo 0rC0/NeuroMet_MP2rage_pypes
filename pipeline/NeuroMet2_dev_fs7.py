@@ -26,7 +26,7 @@ __status__ = "Development"
 
 class NeuroMet():
 
-    def __init__(self, sublist, temp_dir, w_dir, omp_nthreads, raw_data_dir, overwrite):
+    def __init__(self, sublist, temp_dir, w_dir, omp_nthreads, raw_data_dir):
 
         self.subject_list = self.mod_sublist(sublist)
         self.raw_data_dir = raw_data_dir
@@ -40,7 +40,7 @@ class NeuroMet():
 
         self.subject_prefix = 'NeuroMET'
         self.mask_suffix = '.SPMbrain_bin.nii.gz'
-        self.mask_file = '/media/drive_s/AG/AG-Floeel-Imaging/02-User/NEUROMET/Structural_analysis_fs7/List_UNI_DEN_Mask.xlsx'
+        self.mask_file = '/media/drive_s/AG/AG-Floeel-Imaging/02-User/NEUROMET/Structural_analysis_fs7/List_UNI_DEN_Mask.xlsx' # Todo:
 
         mlab.MatlabCommand.set_default_matlab_cmd(self.matlab_command)
         mlab.MatlabCommand.set_default_paths(self.spm_path)
@@ -52,7 +52,10 @@ class NeuroMet():
         return ['{0}_{1}_T{2}'.format(i[0], i[1:-2], i[-1]) for i in l]
 
     def copy_from_raw_data(self):
-
+        """
+        copy niftis from scanner directory and rename them. It assumes a Siemens Scanner directory structure
+        :return:
+        """
         for sub in self.subject_list:
             sub = self.subject_prefix + sub
             print('Copying {0}'.format(sub))
@@ -61,8 +64,8 @@ class NeuroMet():
             sub_dest_dir = os.path.join(self.w_dir, sub)
             if uni and den:
                 os.makedirs(sub_dest_dir, exist_ok=True)
-                uni_name = sub + '.UNI_mp2rage_orig.nii.gz'
-                den_name = sub + '.DEN_mp2rage_orig.nii.gz'
+                uni_name = sub + '.UNI_mp2rage_orig.nii.gz' # ToDo: BIDS Name
+                den_name = sub + '.DEN_mp2rage_orig.nii.gz' # ToDo: BIDS Name
                 if not os.path.isfile(os.path.join(sub_dest_dir, uni_name)) or self.overwrite:
                     shutil.copyfile(uni, os.path.join(sub_dest_dir, uni_name))
                     print('{0} copyed to {1}'.format(uni, os.path.join(sub_dest_dir, uni_name)))
@@ -224,7 +227,7 @@ class NeuroMet():
                 infields=['subject_id', 'uniden'], outfields=['t1']),
             name='datasource')
         datasource.inputs.base_directory = self.w_dir
-        datasource.inputs.template = '{prefix}%s/{prefix}%s.%s_mp2rage_orig.nii.gz'.format(prefix=self.subject_prefix)
+        datasource.inputs.template = 'sub-{prefix}%s/{prefix}%s.%s_mp2rage_orig.nii.gz'.format(prefix=self.subject_prefix)
         datasource.inputs.template_args = info
         datasource.inputs.sort_filelist = False
 
