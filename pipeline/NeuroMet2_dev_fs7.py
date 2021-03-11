@@ -26,55 +26,57 @@ __status__ = "Development"
 
 class NeuroMet():
 
-    def __init__(self, sublist, raw_data_dir, temp_dir, w_dir, omp_nthreads, project_prefix='NeuroMET'):
+    def __init__(self, sublist, raw_data_dir, temp_dir, w_dir, omp_nthreads, project_prefix):
 
         self.subject_list = sublist #self.mod_sublist(sublist)
         self.raw_data_dir = raw_data_dir
         self.temp_dir = temp_dir
         self.w_dir = w_dir
         self.omp_nthreads = omp_nthreads
-        self.spm_path = '/opt/spm12'
+        self.spm_path = '~/.matlab/spm12'
         self.matlab_command = "matlab -nodesktop -nosplash"
         self.fsl_file_format = 'NIFTI_GZ'
 
         self.project_prefix = project_prefix
-        self.mask_suffix = '.SPMbrain_bin.nii.gz'
-        self.mask_file = '/media/drive_s/AG/AG-Floeel-Imaging/02-User/NEUROMET/Structural_analysis_fs7/List_UNI_DEN_Mask.xlsx' # Todo:
+        self.mask_file = '/media/drive_s/AG/AG-Floeel-Imaging/02-User/NEUROMET/Structural_analysis_fs7/List_UNI_DEN_Mask.xlsx' # Todo: should be integrate somehow in a json file
 
         print('w_dir= ', self.w_dir)
         print('temp_dir= ', self.temp_dir)
+        print(os.path.isdir(w_dir))
+        print(os.path.isdir(temp_dir))
         mlab.MatlabCommand.set_default_matlab_cmd(self.matlab_command)
         mlab.MatlabCommand.set_default_paths(self.spm_path)
         fsl.FSLCommand.set_default_output_type(self.fsl_file_format)  # fsl output format
 
     def copy_from_raw_data(self):
-        """
-        copy niftis from scanner directory and rename them. It assumes a Siemens Scanner directory structure
-        :return:
-        """
-        # ToDo: make a node that returns various type of images and copy them in a BIDS structure
-        for sub in self.subject_list:
-            sub = self.project_prefix + sub
-            print('Copying {0}'.format(sub))
-            den = glob.glob(self.raw_data_dir + '/{subnum}/{sub}/*MDC*/*UNI_DEN*/*.nii.gz'.format(subnum=sub[:-3],sub=sub))[0]  # should be only 1 file
-            uni = glob.glob(self.raw_data_dir + '/{subnum}/{sub}/*MDC*/*UNI_Images*/*.nii.gz'.format(subnum=sub[:-3],sub=sub))[0]  # should be only 1 file
-            sub_dest_dir = os.path.join(self.w_dir, sub)
-            if uni and den:
-                os.makedirs(sub_dest_dir, exist_ok=True)
-                uni_name = sub + '.UNI_mp2rage_orig.nii.gz' # ToDo: BIDS Name
-                den_name = sub + '.DEN_mp2rage_orig.nii.gz' # ToDo: BIDS Name
-                if not os.path.isfile(os.path.join(sub_dest_dir, uni_name)) or self.overwrite:
-                    shutil.copyfile(uni, os.path.join(sub_dest_dir, uni_name))
-                    print('{0} copyed to {1}'.format(uni, os.path.join(sub_dest_dir, uni_name)))
-                else:
-                    print('File exists, Skipping copy')
-                if not os.path.isfile(os.path.join(sub_dest_dir, den_name)) or self.overwrite:
-                    shutil.copyfile(den, os.path.join(sub_dest_dir, den_name))
-                    print('{0} copyed to {1}'.format(den, os.path.join(sub_dest_dir, den_name)))
-                else:
-                    print('File exists, Skipping copy')
-            else:
-                raise FileNotFoundError
+        # """
+        # copy niftis from scanner directory and rename them. It assumes a Siemens Scanner directory structure
+        # :return:
+        # """
+        # # ToDo: make a node that returns various type of images and copy them in a BIDS structure
+        # for sub in self.subject_list:
+        #     sub = self.project_prefix + sub
+        #     print('Copying {0}'.format(sub))
+        #     den = glob.glob(self.raw_data_dir + '/{subnum}/{sub}/*MDC*/*UNI_DEN*/*.nii.gz'.format(subnum=sub[:-3],sub=sub))[0]  # should be only 1 file
+        #     uni = glob.glob(self.raw_data_dir + '/{subnum}/{sub}/*MDC*/*UNI_Images*/*.nii.gz'.format(subnum=sub[:-3],sub=sub))[0]  # should be only 1 file
+        #     sub_dest_dir = os.path.join(self.w_dir, sub)
+        #     if uni and den:
+        #         os.makedirs(sub_dest_dir, exist_ok=True)
+        #         uni_name = sub + '.UNI_mp2rage_orig.nii.gz' # ToDo: BIDS Name
+        #         den_name = sub + '.DEN_mp2rage_orig.nii.gz' # ToDo: BIDS Name
+        #         if not os.path.isfile(os.path.join(sub_dest_dir, uni_name)) or self.overwrite:
+        #             shutil.copyfile(uni, os.path.join(sub_dest_dir, uni_name))
+        #             print('{0} copyed to {1}'.format(uni, os.path.join(sub_dest_dir, uni_name)))
+        #         else:
+        #             print('File exists, Skipping copy')
+        #         if not os.path.isfile(os.path.join(sub_dest_dir, den_name)) or self.overwrite:
+        #             shutil.copyfile(den, os.path.join(sub_dest_dir, den_name))
+        #             print('{0} copyed to {1}'.format(den, os.path.join(sub_dest_dir, den_name)))
+        #         else:
+        #             print('File exists, Skipping copy')
+        #     else:
+        #         raise FileNotFoundError
+        pass
 
 
     # Ref: http://nipype.readthedocs.io/en/latest/users/function_interface.html
@@ -147,8 +149,8 @@ class NeuroMet():
     def make_sink(self):
         sink = Node(interface=DataSink(),
                     name='sink')
-        sink.inputs.base_directory = self.w_dir
-        # sink.inputs.substitutions = [('_subject_id_', self.project_prefix),
+        sink.inputs.base_directory = os.path.join(self.w_dir, 'derivatives', 'NeuroMET')
+        sink.inputs.substitutions = [('_subject_id_', '')]#,
         #                              ('_uniden_UNI', ''),
         #                              ('_uniden_DEN', ''),
         #                              ('DEN_mp2rage_orig_reoriented_masked_maths', 'mUNIbrain_DENskull_SPMmasked'),
@@ -210,22 +212,22 @@ class NeuroMet():
 
         # unidensource, return for every subject uni and den
         unidensource = Node(interface=IdentityInterface(fields=['uniden']), name="unidensource")
-        unidensource.iterables = ('uniden', ['UNI', 'DEN'])
+        unidensource.iterables = ('uniden', ['UNI', 'UNIDEN'])
 
         split_sub_str = Node(
             Function(['subject_str'], ['subject_id', 'session_id'], self.split_subject_ses),
             name='split_sub_str')
 
         info = dict(
-            t1=[['subject_id', 'session_id', 'subject_id', 'session_id', 'uniden']]
+            T1w=[['subject_id', 'session_id', 'anat', 'subject_id', 'session_id', 'uniden']]
         )
 
         datasource = Node(
             interface=DataGrabber(
-                infields=['subject_id', 'session_id', 'uniden'], outfields=['t1']),
+                infields=['subject_id', 'session_id', 'uniden'], outfields=['T1w']),
             name='datasource')
         datasource.inputs.base_directory = self.w_dir
-        datasource.inputs.template = 'sub-{prefix}%s/ses-%s/sub-{prefix}%s_ses-%s_acq-mp2rage_T1-%s.nii.gz'.format(prefix=self.project_prefix)
+        datasource.inputs.template = 'sub-%s/ses-%s/%s/sub-%s_ses-%s_desc-%s_MP2RAGE.nii.gz'
         datasource.inputs.template_args = info
         datasource.inputs.sort_filelist = False
 
@@ -238,7 +240,7 @@ class NeuroMet():
         neuromet.connect(split_sub_str, 'subject_id', datasource, 'subject_id')
         neuromet.connect(split_sub_str, 'session_id', datasource, 'session_id')
         neuromet.connect(unidensource, 'uniden', datasource, 'uniden')
-        neuromet.connect(datasource, 't1', segment, 'ro.in_file')
+        neuromet.connect(datasource, 'T1w', segment, 'ro.in_file')
 
         # neuromet.connect()
         neuromet.connect(segment, 'spm_tissues_split.gm', mask, 'sum_tissues1.in_file')
