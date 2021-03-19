@@ -1,0 +1,5 @@
+__author__ = "Andrea Dell'Orco"
+__version__ = "0.0.1_bids"
+__maintainer__ = "Andrea Dell'Orco"
+__email__ = "andrea.dellorco@charite.de"
+__status__ = "Development"
