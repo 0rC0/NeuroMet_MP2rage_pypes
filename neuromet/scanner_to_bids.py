@@ -7,11 +7,11 @@ import nipype.interfaces.matlab as mlab
 import os
 from nipype.interfaces.utility import Function
 from nipype.algorithms.misc import Gunzip
-from pipeline.nodes.fssegmentHA_T1 import SegmentHA_T1 # freesurfer 7 hippocampus segmentation
-from pipeline.nodes.qdec import QDec
-from pipeline.nodes.adj_vol import AdjustVolume
-from pipeline.nodes.get_mask_value import GetMaskValue
-from pipeline.nodes.parse_scanner_dir import ParseScannerDir
+from .nodes.fssegmentHA_T1 import SegmentHA_T1 # freesurfer 7 hippocampus segmentation
+from .nodes.qdec import QDec
+from .nodes.adj_vol import AdjustVolume
+from .nodes.get_mask_value import GetMaskValue
+from .nodes.parse_scanner_dir import ParseScannerDir
 from nipype.interfaces.utility import Rename
 
 class ScannerToBIDS:
@@ -57,9 +57,9 @@ class ScannerToBIDS:
         #                              ('DEN_mp2rage_orig_reoriented_masked_maths', 'mUNIbrain_DENskull_SPMmasked'),
         #                              ('_mp2rage_orig_reoriented_maths_maths_bin', '_brain_bin')]
         sink.inputs.regexp_substitutions = [(r'_subject_str_2(?P<subid>[0-9][0-9][0-9])T(?P<sesid>[0-9])/uni_',
-                                               r'sub-NeuroMET\g<subid>/ses-0\g<sesid>/anat/sub-NeuroMET\g<subid>_ses-0\g<sesid>_mp2rage_UNI.nii.gz'),
+                                               r'sub-NeuroMET\g<subid>/ses-0\g<sesid>/anat/sub-NeuroMET\g<subid>_ses-0\g<sesid>_desc-UNI_MP2RAGE.nii.gz'),
                                             (r'_subject_str_2(?P<subid>[0-9][0-9][0-9])T(?P<sesid>[0-9])/uniden',
-                                             r'sub-NeuroMET\g<subid>/ses-0\g<sesid>/anat/sub-NeuroMET\g<subid>_ses-0\g<sesid>_desc_UNIDEN.nii.gz'),
+                                             r'sub-NeuroMET\g<subid>/ses-0\g<sesid>/anat/sub-NeuroMET\g<subid>_ses-0\g<sesid>_desc-UNIDEN_MP2RAGE.nii.gz'),
                                             (r'_subject_str_2(?P<subid>[0-9][0-9][0-9])T(?P<sesid>[0-9])/flair',
                                              r'sub-NeuroMET\g<subid>/ses-0\g<sesid>/anat/sub-NeuroMET\g<subid>_ses-0\g<sesid>_FLAIR.nii.gz'),
                                             (r'_subject_str_2(?P<subid>[0-9][0-9][0-9])T(?P<sesid>[0-9])/bold_',

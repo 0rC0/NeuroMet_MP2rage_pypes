@@ -5,38 +5,59 @@ import nipype.interfaces.freesurfer as fs
 import nipype.interfaces.spm as spm
 import nipype.interfaces.matlab as mlab
 import os
+import json
 from nipype.interfaces.utility import Function
 from nipype.algorithms.misc import Gunzip
-from pipeline.nodes.fssegmentHA_T1 import SegmentHA_T1 # freesurfer 7 hippocampus segmentation
-from pipeline.nodes.qdec import QDec
-from pipeline.nodes.adj_vol import AdjustVolume
-from pipeline.nodes.get_mask_value import GetMaskValue
-from pipeline.nodes.parse_scanner_dir import ParseScannerDir
+from .nodes.fssegmentHA_T1 import SegmentHA_T1
+from .nodes.qdec import QDec
+from .nodes.adj_vol import AdjustVolume
+from .nodes.get_mask_value import GetMaskValue
+from .nodes.parse_scanner_dir import ParseScannerDir
 
 
 class NeuroMet:
 
-    def __init__(self, sublist, raw_data_dir, temp_dir, w_dir, omp_nthreads, project_prefix):
+    def __init__(self, sublist, raw_data_dir, temp_dir, bids_root, omp_nthreads):
 
         self.subject_list = sublist #self.mod_sublist(sublist)
         self.raw_data_dir = raw_data_dir
         self.temp_dir = temp_dir
-        self.w_dir = w_dir
+        self.bids_root = bids_root
         self.omp_nthreads = omp_nthreads
         self.spm_path = '~/.matlab/spm12'
         self.matlab_command = "matlab -nodesktop -nosplash"
         self.fsl_file_format = 'NIFTI_GZ'
+        self.derivatives_dir = os.path.join(self.bids_root, 'derivatives', 'NeuroMET')
+        self.mask_file = os.path.join(self.derivatives_dir, 'masks.tsv')
 
-        self.project_prefix = project_prefix
-        self.mask_file = '/media/drive_s/AG/AG-Floeel-Imaging/02-User/NEUROMET/Structural_analysis_fs7/List_UNI_DEN_Mask.xlsx' # ToDo: should be integrate somehow in a json file
-
-        print('w_dir= ', self.w_dir)
-        print('temp_dir= ', self.temp_dir)
-        print(os.path.isdir(w_dir))
-        print(os.path.isdir(temp_dir))
+        self.make_derivatives_dir()
         mlab.MatlabCommand.set_default_matlab_cmd(self.matlab_command)
         mlab.MatlabCommand.set_default_paths(self.spm_path)
         fsl.FSLCommand.set_default_output_type(self.fsl_file_format)  # fsl output format
+
+    def make_derivatives_dir(self):
+
+        if not os.path.isdir(self.derivatives_dir):
+            os.makedirs(self.derivatives_dir, exist_ok=True)
+
+        description = {
+                        "Name": "NeuroMET preprocessing pipeline",
+                        "BIDSVersion": "1.1.1",
+                        "PipelineDescription": {
+                            "Name": "NeuroMET",
+                            "Version": "0.0.1_bids",
+                            "CodeURL": ""
+                        },
+                        "CodeURL": "",
+                        "HowToAcknowledge": "ToDo",
+                        "License": "MIT"
+                    }
+        with open(os.path.join(self.derivatives_dir, 'dataset_description.json'), 'w') as dd:
+            json.dump(description, dd)
+
+        if not os.path.isfile(self.mask_file):
+            with open(self.mask_file, 'w') as mf:
+                mf.write('participant	mask_(UNI_or_DEN)')
 
 
     def copy_mask(in_file, fs_dir):
@@ -70,7 +91,7 @@ class NeuroMet:
         # curdir=$PWD && cd /home/WorkFlowTemp/NeuroMet/Neuromet2/FreeSurfer/_subject_id_034/fs_recon1 &&
         # tar -hcf - ./recon_all | tar -xf - -C $curdir && cd $curdir && cp -R recon_all NeuroMet034.freesurfer
         shutil.copytree(os.path.join(in_dir, 'recon_all'),
-                           os.path.join(out_dir, '{1}{0}/{1}{0}.freesurfer'.format(sub_id, '{pref}'.format(pref=self.project_prefix))))
+                           os.path.join(out_dir, '{1}{0}/{1}{0}.freesurfer'.format(sub_id, 'NeuroMET')))
         return out_dir
 
     def sublist(in_list, start=0, end=3):
@@ -109,16 +130,18 @@ class NeuroMet:
     def make_sink(self):
         sink = Node(interface=DataSink(),
                     name='sink')
-        sink.inputs.base_directory = os.path.join(self.w_dir, 'derivatives', 'NeuroMET')
-        sink.inputs.substitutions = [('_subject_id_', '')]#,
-        #                              ('_uniden_UNI', ''),
-        #                              ('_uniden_DEN', ''),
-        #                              ('DEN_mp2rage_orig_reoriented_masked_maths', 'mUNIbrain_DENskull_SPMmasked'),
-        #                              ('_mp2rage_orig_reoriented_maths_maths_bin', '_brain_bin')]
-        # sink.inputs.regexp_substitutions = [(r'c1{prefix}(.*).UNI_brain_bin.nii.gz'.format(prefix=self.project_prefix),
-        #                                      r'{prefix}\1.UNI_brain_bin.nii.gz'.format(prefix=self.project_prefix)),
-        #                                     (r'c1{prefix}(.*).DEN_brain_bin.nii.gz'.format(prefix=self.project_prefix),
-        #                                      r'{prefix}\1.DEN_brain_bin.nii.gz'.format(prefix=self.project_prefix))]
+        sink.inputs.base_directory = os.path.join(self.bids_root, 'derivatives', 'NeuroMET')
+        sink.inputs.substitutions = [('DEN_mp2rage_orig_reoriented_masked_maths', 'mUNIbrain_DENskull_SPMmasked'),
+                                      ('_mp2rage_orig_reoriented_maths_maths_bin', '_brain_bin'),
+                                     ('/_uniden_UNI/', '/anat/'),
+                                     ('/_uniden_UNIDEN/', '/anat/')]
+        sink.inputs.regexp_substitutions = [(r'_subject_id_2(?P<subid>[0-9][0-9][0-9])T(?P<sesid>[0-9])',
+                                             r'sub-NeuroMET\g<subid>/ses-0\g<sesid>'),
+                                            (r'c1(.*)_reoriented_maths_maths_bin.nii.gz', r'\1_ro_brain_bin.nii.gz'),
+                                            (r'c1(.*)_MP2RAGE_reoriented.nii', r'\1_ro_GM_bin.nii'),
+                                            (r'c2(.*)_MP2RAGE_reoriented.nii', r'\1_ro_WM_bin.nii'),
+                                            (r'c3(.*)_MP2RAGE_reoriented.nii', r'\1_ro_CSF_bin.nii'),
+                                            (r'msub-(.*)_MP2RAGE_reoriented.nii', r'sub-\1_ro_bfcorr.nii')]
         return sink
 
     def make_segment(self):
@@ -161,8 +184,7 @@ class NeuroMet:
     def split_subject_ses(subject_str):
         # Split the input $subjectT$session in subject and session
         sub_str=str(subject_str)
-        return subject_str.split('T')[0], subject_str.split('T')[1]
-
+        return subject_str.split('T')[0][1:], subject_str.split('T')[1]
 
     def make_neuromet1_workflow(self):
 
@@ -186,8 +208,8 @@ class NeuroMet:
             interface=DataGrabber(
                 infields=['subject_id', 'session_id', 'uniden'], outfields=['T1w']),
             name='datasource')
-        datasource.inputs.base_directory = self.w_dir
-        datasource.inputs.template = 'sub-%s/ses-%s/%s/sub-%s_ses-%s_desc-%s_MP2RAGE.nii.gz'
+        datasource.inputs.base_directory = self.bids_root
+        datasource.inputs.template = 'sub-NeuroMET%s/ses-0%s/%s/sub-NeuroMET%s_ses-0%s_desc-%s_MP2RAGE.nii.gz'
         datasource.inputs.template_args = info
         datasource.inputs.sort_filelist = False
 
@@ -195,7 +217,7 @@ class NeuroMet:
         segment = self.make_segment()
         mask = self.make_mask()
 
-        neuromet = Workflow(name=(self.project_prefix if self.project_prefix else 'workflow'), base_dir=self.temp_dir)
+        neuromet = Workflow(name='NeuroMET', base_dir=self.temp_dir)
         neuromet.connect(infosource, 'subject_id', split_sub_str, 'subject_str')
         neuromet.connect(split_sub_str, 'subject_id', datasource, 'subject_id')
         neuromet.connect(split_sub_str, 'session_id', datasource, 'session_id')
@@ -293,21 +315,26 @@ class NeuroMet:
         infosource.iterables = ('subject_id', self.subject_list)
 
         mask_source = Node(interface=GetMaskValue(
-            csv_file='/media/drive_s/AG/AG-Floeel-Imaging/02-User/NEUROMET2/Structural_Analysis_fs7/List_UNI_DEN_Mask.xlsx'
+            csv_file=self.mask_file
         ), name='get_mask')
+
+        split_sub_str = Node(
+            Function(['subject_str'], ['subject_id', 'session_id'], self.split_subject_ses),
+            name='split_sub_str')
+
 
         # Datasource: Build subjects' filenames from IDs
         info = dict(
-            mask = [['subject_id', '', 'subject_id', 'mask', '_brain_bin.nii.gz']],
-            uni_bias_corr = [['subject_id', 'm', 'subject_id', '', 'UNI_mp2rage_orig_reoriented.nii']],
-            den_ro = [['subject_id', '', 'subject_id', '', 'DEN_mp2rage_orig_reoriented.nii.gz']])
+            mask = [['subject_id', 'session_id', 'anat', 'subject_id', 'session_id', 'mask', 'MP2RAGE_ro_brain_bin.nii.gz']],
+            uni_bias_corr = [['subject_id', 'session_id', 'anat', 'subject_id', 'session_id', 'UNI', 'ro_bfcorr.nii']],
+            den_ro = [['subject_id', 'session_id', 'anat', 'subject_id', 'session_id', 'UNIDEN', 'ro_bfcorr.nii']])
 
         datasource = Node(
             interface=DataGrabber(
-                infields=['subject_id', 'mask'], outfields=['mask', 'uni_bias_corr', 'den_ro']),
+                infields=['subject_id', 'session_id', 'mask'], outfields=['mask', 'uni_bias_corr', 'den_ro']),
             name='datasource')
-        datasource.inputs.base_directory = self.w_dir
-        datasource.inputs.template = '{pref}%s/%s{pref}%s.%s%s'.format(pref=self.project_prefix)
+        datasource.inputs.base_directory = self.derivatives_dir
+        datasource.inputs.template = 'sub-NeuroMET%s/ses-0%s/%s/sub-NeuroMET%s_ses-0%s_desc-%s_%s'
         datasource.inputs.template_args = info
         datasource.inputs.sort_filelist = False
 
@@ -317,8 +344,10 @@ class NeuroMet:
 
         freesurfer = self.make_freesurfer()
 
-        neuromet_fs = Workflow(name='{pref}_fs'.format(pref=(self.project_prefix if self.project_prefix else 'workflow')), base_dir=self.temp_dir)
-        neuromet_fs.connect(infosource, 'subject_id', datasource, 'subject_id')
+        neuromet_fs = Workflow(name='NeuroMET', base_dir=self.temp_dir)
+        neuromet_fs.connect(infosource, 'subject_id', split_sub_str, 'subject_str')
+        neuromet_fs.connect(split_sub_str, 'subject_id', datasource, 'subject_id')
+        neuromet_fs.connect(split_sub_str, 'session_id', datasource, 'session_id')
         neuromet_fs.connect(infosource, 'subject_id', mask_source, 'subject_id')
         neuromet_fs.connect(mask_source, 'mask_value', datasource, 'mask')
         neuromet_fs.connect(datasource, 'uni_bias_corr', comb_imgs, 'mask_uni_bias.in_file')
@@ -329,13 +358,13 @@ class NeuroMet:
         neuromet_fs.connect(datasource, 'mask', freesurfer, 'fs_mriconv.in_file')
 
         out_dir_source = Node(interface=IdentityInterface(fields=['out_dir'], mandatory_inputs=True), name = 'out_dir_source')
-        out_dir_source.inputs.out_dir = self.w_dir
+        out_dir_source.inputs.out_dir = self.bids_root
 
         copy_freesurfer_dir = Node(
             Function(['in_dir', 'sub_id', 'out_dir'], ['out_dir'], self.copy_freesurfer_dir),
             name='copy_freesurfer_dir')
 
-        qdec = Node(interface=QDec(basedir=self.w_dir), name='qdec')
+        qdec = Node(interface=QDec(basedir=self.bids_root), name='qdec')
 
         adj_vol = Node(interface=AdjustVolume(
             diag_csv='/media/drive_s/AG/AG-Floeel-Imaging/02-User/NEUROMET2/Structural_Analysis_fs7/Diagnosen.csv'
