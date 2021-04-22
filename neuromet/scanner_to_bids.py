@@ -57,9 +57,9 @@ class ScannerToBIDS:
         #                              ('DEN_mp2rage_orig_reoriented_masked_maths', 'mUNIbrain_DENskull_SPMmasked'),
         #                              ('_mp2rage_orig_reoriented_maths_maths_bin', '_brain_bin')]
         sink.inputs.regexp_substitutions = [(r'_subject_str_2(?P<subid>[0-9][0-9][0-9])T(?P<sesid>[0-9])/uni_',
-                                               r'sub-NeuroMET\g<subid>/ses-0\g<sesid>/anat/sub-NeuroMET\g<subid>_ses-0\g<sesid>_desc-UNI_MP2RAGE.nii.gz'),
+                                               r'sub-NeuroMET\g<subid>/ses-0\g<sesid>/anat/sub-NeuroMET\g<subid>_ses-0\g<sesid>_UNI-T1w.nii.gz'),
                                             (r'_subject_str_2(?P<subid>[0-9][0-9][0-9])T(?P<sesid>[0-9])/uniden',
-                                             r'sub-NeuroMET\g<subid>/ses-0\g<sesid>/anat/sub-NeuroMET\g<subid>_ses-0\g<sesid>_desc-UNIDEN_MP2RAGE.nii.gz'),
+                                             r'sub-NeuroMET\g<subid>/ses-0\g<sesid>/anat/sub-NeuroMET\g<subid>_ses-0\g<sesid>_desc-UNI-T1-DEN.nii.gz'),
                                             (r'_subject_str_2(?P<subid>[0-9][0-9][0-9])T(?P<sesid>[0-9])/flair',
                                              r'sub-NeuroMET\g<subid>/ses-0\g<sesid>/anat/sub-NeuroMET\g<subid>_ses-0\g<sesid>_FLAIR.nii.gz'),
                                             (r'_subject_str_2(?P<subid>[0-9][0-9][0-9])T(?P<sesid>[0-9])/bold_',

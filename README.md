@@ -1,6 +1,7 @@
 # NeuroMET MP2RAGE pipeline
 
-Structural MRI preprocessing pipeline to produce a T1w image optimized for further processing with `fmriprep` and `freesurfer`
+Structural MRI preprocessing pipeline for MP2RAGE images.
+Uses the T1w UNI and its denoised reconstruction (O’Brien et al., 2014) to achieve a T1w derivatives optimized for further processing with `fmriprep` and `freesurfer`
 
 ## About 
 
@@ -11,7 +12,22 @@ This pipeline processes the T1w images to achieve an image with the brain from t
 
 *ToDo*
 
+## Directory Structure
+```
+BIDS_ROOT
+└── sub-sub001
+    └── ses-03
+        ├── anat
+        │   ├── sub-sub001_ses-03_desc-UNIDEN_MP2RAGE.nii.gz
+        │   ├── sub-sub001_ses-03_desc-UNI_MP2RAGE.nii.gz
+        │   └── sub-sub001_ses-03_FLAIR.nii.gz
+```
+Note: there is a BIDS extension proposal for MP2Rage dataset. This directory structure is not actually a valid BIDS dataset.
+
 ## Usage
 
  See [JupyterNorebook](notebooks/NeuroMET.ipynb).
  
+## Outputs
+
+*ToDo*

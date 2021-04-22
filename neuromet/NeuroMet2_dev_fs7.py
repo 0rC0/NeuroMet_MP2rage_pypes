@@ -1,5 +1,7 @@
-from nipype.pipeline.engine import Workflow, Node
+from nipype.pipeline.engine import Workflow, Node, MapNode
 from nipype import DataGrabber, DataSink, IdentityInterface
+from nipype.interfaces.utility import Split, Merge
+
 import nipype.interfaces.fsl as fsl
 import nipype.interfaces.freesurfer as fs
 import nipype.interfaces.spm as spm
@@ -12,6 +14,7 @@ from .nodes.fssegmentHA_T1 import SegmentHA_T1
 from .nodes.qdec import QDec
 from .nodes.adj_vol import AdjustVolume
 from .nodes.get_mask_value import GetMaskValue
+from .nodes.gzip import GZipTask
 from .nodes.parse_scanner_dir import ParseScannerDir
 
 
@@ -138,15 +141,18 @@ class NeuroMet:
         sink.inputs.substitutions = [('DEN_mp2rage_orig_reoriented_masked_maths', 'mUNIbrain_DENskull_SPMmasked'),
                                       ('_mp2rage_orig_reoriented_maths_maths_bin', '_brain_bin'),
                                      ('/_uniden_UNI/', '/anat/'),
-                                     ('/_uniden_UNIDEN/', '/anat/')]
+                                     ('/_uniden_UNIDEN/', '/anat/'),
+                                     ('/_uniden_desc-UNI-T1-DEN/', '/anat/'),
+                                     ('_uniden_UNI-T1w', '/anat/')]
         sink.inputs.regexp_substitutions = [(r'_subject_id_2(?P<subid>[0-9][0-9][0-9])T(?P<sesid>[0-9])',
                                              r'sub-NeuroMET\g<subid>/ses-0\g<sesid>'),
                                             (r'c1(.*)_reoriented_maths_maths_bin.nii.gz', r'\1_ro_brain_bin.nii.gz'),
-                                            (r'c1(.*)_MP2RAGE_reoriented.nii', r'\1_ro_GM_bin.nii'),
-                                            (r'c2(.*)_MP2RAGE_reoriented.nii', r'\1_ro_WM_bin.nii'),
-                                            (r'c3(.*)_MP2RAGE_reoriented.nii', r'\1_ro_CSF_bin.nii'),
-                                            (r'msub-(.*)_MP2RAGE_reoriented.nii', r'sub-\1_ro_bfcorr.nii')]
+                                            (r'c1(.*)_reoriented.nii.gz', r'\1_ro_GM_bin.nii'),
+                                            (r'c2(.*)_reoriented.nii.gz', r'\1_ro_WM_bin.nii'),
+                                            (r'c3(.*)_reoriented.nii.gz', r'\1_ro_CSF_bin.nii'),
+                                            (r'msub-(.*)_reoriented.nii', r'sub-\1_ro_bfcorr.nii')]
         return sink
+
 
     def make_segment(self):
         # Ref: http://nipype.readthedocs.io/en/0.12.1/interfaces/generated/nipype.interfaces.fsl.utils.html#reorient2std
@@ -160,8 +166,6 @@ class NeuroMet:
             Function(['in_list'], ['gm', 'wm', 'csf'], self.spm_tissues),
             name='spm_tissues_split')
 
-        gzip = Node(Function(['in_list'], ['out_list'], self.gzip_spm),
-                        name='gzip')
 
         segment = Workflow(name='Segment', base_dir=self.temp_dir)
 
@@ -198,7 +202,7 @@ class NeuroMet:
 
         # unidensource, return for every subject uni and den
         unidensource = Node(interface=IdentityInterface(fields=['uniden']), name="unidensource")
-        unidensource.iterables = ('uniden', ['UNI', 'UNIDEN'])
+        unidensource.iterables = ('uniden', ['UNI-T1w', 'desc-UNI-T1-DEN'])
 
         split_sub_str = Node(
             Function(['subject_str'], ['subject_id', 'session_id'], self.split_subject_ses),
@@ -213,15 +217,17 @@ class NeuroMet:
                 infields=['subject_id', 'session_id', 'uniden'], outfields=['T1w']),
             name='datasource')
         datasource.inputs.base_directory = self.bids_root
-        datasource.inputs.template = 'sub-NeuroMET%s/ses-0%s/%s/sub-NeuroMET%s_ses-0%s_desc-%s_MP2RAGE.nii.gz'
+        datasource.inputs.template = 'sub-NeuroMET%s/ses-0%s/%s/sub-NeuroMET%s_ses-0%s_%s.nii.gz'
         datasource.inputs.template_args = info
         datasource.inputs.sort_filelist = False
 
         sink = self.make_sink()
         segment = self.make_segment()
         mask = self.make_mask()
+        merge = Node(interface=Merge(4), name='merge')
+        gz = MapNode(interface=GZipTask(), name='gz', iterfield='input_file')
 
-        neuromet = Workflow(name='NeuroMET_tissue_semgmentation', base_dir=self.temp_dir)
+        neuromet = Workflow(name='NeuroMET_tissue_segmentation', base_dir=self.temp_dir)
         neuromet.connect(infosource, 'subject_id', split_sub_str, 'subject_str')
         neuromet.connect(split_sub_str, 'subject_id', datasource, 'subject_id')
         neuromet.connect(split_sub_str, 'session_id', datasource, 'session_id')
@@ -232,10 +238,15 @@ class NeuroMet:
         neuromet.connect(segment, 'spm_tissues_split.gm', mask, 'sum_tissues1.in_file')
         neuromet.connect(segment, 'spm_tissues_split.wm', mask, 'sum_tissues1.operand_files')
         neuromet.connect(segment, 'spm_tissues_split.csf', mask, 'sum_tissues2.operand_files')
-        neuromet.connect(segment, 'spm_tissues_split.gm', sink, '@gm')
-        neuromet.connect(segment, 'spm_tissues_split.wm', sink, '@wm')
-        neuromet.connect(segment, 'spm_tissues_split.csf', sink, '@csf')
-        neuromet.connect(segment, 'seg.bias_corrected_images', sink, '@biascorr')
+
+        neuromet.connect(gz, 'output_file', sink, '@tissue_masks')
+        neuromet.connect(segment, 'spm_tissues_split.gm', merge, 'in1') #gz, 'input_file') #sink, '@gm')
+        neuromet.connect(segment, 'spm_tissues_split.wm', merge, 'in2') # gz, 'input_file') #sink, '@wm')
+        neuromet.connect(segment, 'spm_tissues_split.csf', merge, 'in3') # gz, 'input_file') #sink, '@csf')
+        neuromet.connect(segment, 'seg.bias_corrected_images', merge, 'in4') #sink, '@biascorr')
+        neuromet.connect(merge, 'out', gz, 'input_file')
+
+        neuromet.connect(gz, 'output_file', sink, '@tissues_and_biascorr')
         # neuromet.connect(comb_imgs, 'uni_brain_den_surr_add.out_file', sink, '@img')
         neuromet.connect(mask, 'gen_mask.out_file', sink, '@mask')
         neuromet.connect(segment, 'ro.out_file', sink, '@ro')
@@ -356,17 +367,17 @@ class NeuroMet:
 
         # Datasource: Build subjects' filenames from IDs
         info = dict(
-            mask=[['derivatives/NeuroMET/', 'subject_id', 'session_id', 'anat', 'subject_id', 'session_id', 'desc-UNIDEN_MP2RAGE_ro_brain_bin.nii.gz']],
-            uni_bias_corr=[['derivatives/NeuroMET/', 'subject_id', 'session_id', 'anat', 'subject_id', 'session_id', 'desc-UNI_ro_bfcorr.nii']],
-            den_ro=[['derivatives/NeuroMET/', 'subject_id', 'session_id', 'anat', 'subject_id', 'session_id', 'desc-UNIDEN_ro_bfcorr.nii']],
-            flair=[['', 'subject_id', 'session_id', 'anat', 'subject_id', 'session_id', 'FLAIR.nii.gz']])
+            mask=[['derivatives/NeuroMET/', 'subject_id', 'session_id', 'anat', 'subject_id', 'session_id', 'desc-UNI-T1-DEN_ro_brain_bin']],
+            uni_bias_corr=[['derivatives/NeuroMET/', 'subject_id', 'session_id', 'anat', 'subject_id', 'session_id', 'UNI-T1w_ro_bfcorr']],
+            den_ro=[['derivatives/NeuroMET/', 'subject_id', 'session_id', 'anat', 'subject_id', 'session_id', 'desc-UNI-T1-DEN_ro_bfcorr']],
+            flair=[['', 'subject_id', 'session_id', 'anat', 'subject_id', 'session_id', 'FLAIR']])
 
         datasource = Node(
             interface=DataGrabber(
                 infields=['subject_id', 'session_id', 'mask'], outfields=['mask', 'uni_bias_corr', 'den_ro', 'flair']),
             name='datasource')
         datasource.inputs.base_directory = self.bids_root
-        datasource.inputs.template = '%ssub-NeuroMET%s/ses-0%s/%s/sub-NeuroMET%s_ses-0%s_%s'
+        datasource.inputs.template = '%ssub-NeuroMET%s/ses-0%s/%s/sub-NeuroMET%s_ses-0%s_%s.nii.gz'
         datasource.inputs.template_args = info
         datasource.inputs.sort_filelist = False
 
