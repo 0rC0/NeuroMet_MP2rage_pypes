@@ -26,7 +26,7 @@ Note: there is a BIDS extension proposal for MP2Rage dataset. This directory str
 
 ## Usage
 
- See [JupyterNorebook](notebooks/NeuroMET.ipynb).
+See [JupyterNorebook](notebooks/NeuroMET.ipynb).
  
 ## Outputs
 
