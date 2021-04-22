@@ -17,15 +17,19 @@ from .nodes.parse_scanner_dir import ParseScannerDir
 
 class NeuroMet:
 
-    def __init__(self, sublist, raw_data_dir, temp_dir, bids_root, omp_nthreads):
+    def __init__(self, sublist, raw_data_dir, temp_dir, bids_root, omp_nthreads,
+                 useflair=True,
+                 spm_path='~/.matlab/spm12',
+                 matlab_command="matlab -nodesktop -nosplash"):
 
-        self.subject_list = sublist #self.mod_sublist(sublist)
+        self.subject_list = sublist
         self.raw_data_dir = raw_data_dir
         self.temp_dir = temp_dir
         self.bids_root = bids_root
         self.omp_nthreads = omp_nthreads
-        self.spm_path = '~/.matlab/spm12'
-        self.matlab_command = "matlab -nodesktop -nosplash"
+        self.spm_path = spm_path
+        self.matlab_command = matlab_command
+        self.useflair = useflair
         self.fsl_file_format = 'NIFTI_GZ'
         self.derivatives_dir = os.path.join(self.bids_root, 'derivatives', 'NeuroMET')
         self.mask_file = os.path.join(self.derivatives_dir, 'masks.tsv')
@@ -170,7 +174,7 @@ class NeuroMet:
 
     def make_mask(self):
         # The c2 and c3 images from SPM Segment are added to c1 to generate a mask
-        mask = Workflow(name='Mask_UNI', base_dir=self.temp_dir)
+        mask = Workflow(name='Mask', base_dir=self.temp_dir)
         sum_tissues1 = Node(interface=fsl.maths.MultiImageMaths(op_string=' -add %s'),
                                 name='sum_tissues1')
         sum_tissues2 = Node(interface=fsl.maths.MultiImageMaths(op_string=' -add %s'),
@@ -186,7 +190,7 @@ class NeuroMet:
         sub_str=str(subject_str)
         return subject_str.split('T')[0][1:], subject_str.split('T')[1]
 
-    def make_neuromet1_workflow(self):
+    def make_tissue_segmentation_wf(self):
 
         # Infosource: Iterate through subject names
         infosource = Node(interface=IdentityInterface(fields=['subject_id']), name="infosource")
@@ -217,7 +221,7 @@ class NeuroMet:
         segment = self.make_segment()
         mask = self.make_mask()
 
-        neuromet = Workflow(name='NeuroMET', base_dir=self.temp_dir)
+        neuromet = Workflow(name='NeuroMET_tissue_semgmentation', base_dir=self.temp_dir)
         neuromet.connect(infosource, 'subject_id', split_sub_str, 'subject_str')
         neuromet.connect(split_sub_str, 'subject_id', datasource, 'subject_id')
         neuromet.connect(split_sub_str, 'session_id', datasource, 'session_id')
@@ -258,34 +262,61 @@ class NeuroMet:
 
     def make_freesurfer(self):
 
-        # Ref: http://nipype.readthedocs.io/en/1.0.4/interfaces/generated/interfaces.freesurfer/preprocess.html#reconall
-        fs_recon1 = Node(interface=fs.ReconAll(directive='autorecon1',
-                                               mris_inflate='-n 15',
-                                               hires=True,
-                                               mprage=True,
-                                               openmp=self.omp_nthreads),
-                         name='fs_recon1',
-                         n_procs=self.omp_nthreads)
         fs_mriconv = Node(interface=fs.MRIConvert(out_type='mgz'),
                           name='fs_mriconv')
         fs_vol2vol = Node(interface=fs.ApplyVolTransform(mni_152_reg=True),
                           name='fs_vol2vol')
         fs_mrimask = Node(interface=fs.ApplyMask(), name='fs_mrimask')
-        fs_recon2 = Node(interface=fs.ReconAll(directive='autorecon2',
-                                               hires=True,
-                                               mprage=True,
-                                               hippocampal_subfields_T1=False,
-                                               openmp=self.omp_nthreads),
-                         name='fs_recon2',
-                         n_procs=self.omp_nthreads)
+        # Ref: http://nipype.readthedocs.io/en/1.0.4/interfaces/generated/interfaces.freesurfer/preprocess.html#reconall
+        if self.useflair:
+            fs_recon1 = Node(interface=fs.ReconAll(directive='autorecon1',
+                                                   mris_inflate='-n 15',
+                                                   hires=True,
+                                                   mprage=True,
+                                                   use_FLAIR=True,
+                                                   openmp=self.omp_nthreads),
+                             name='fs_recon1',
+                             n_procs=self.omp_nthreads)
+            fs_recon2 = Node(interface=fs.ReconAll(directive='autorecon2',
+                                                   hires=True,
+                                                   mprage=True,
+                                                   use_FLAIR=True,
+                                                   hippocampal_subfields_T1=False,
+                                                   openmp=self.omp_nthreads),
+                             name='fs_recon2',
+                             n_procs=self.omp_nthreads)
 
-        fs_recon3 = Node(interface=fs.ReconAll(directive='autorecon3',
-                                               hires=True,
-                                               mprage=True,
-                                               hippocampal_subfields_T1=False,
-                                               openmp=self.omp_nthreads),
-                         name='fs_recon3',
-                         n_procs=self.omp_nthreads)
+            fs_recon3 = Node(interface=fs.ReconAll(directive='autorecon3',
+                                                   hires=True,
+                                                   mprage=True,
+                                                   use_FLAIR=True,
+                                                   hippocampal_subfields_T1=False,
+                                                   openmp=self.omp_nthreads),
+                             name='fs_recon3',
+                             n_procs=self.omp_nthreads)
+        else:
+            fs_recon1 = Node(interface=fs.ReconAll(directive='autorecon1',
+                                                   mris_inflate='-n 15',
+                                                   hires=True,
+                                                   mprage=True,
+                                                   openmp=self.omp_nthreads),
+                             name='fs_recon1',
+                             n_procs=self.omp_nthreads)
+            fs_recon2 = Node(interface=fs.ReconAll(directive='autorecon2',
+                                                   hires=True,
+                                                   mprage=True,
+                                                   hippocampal_subfields_T1=False,
+                                                   openmp=self.omp_nthreads),
+                             name='fs_recon2',
+                             n_procs=self.omp_nthreads)
+
+            fs_recon3 = Node(interface=fs.ReconAll(directive='autorecon3',
+                                                   hires=True,
+                                                   mprage=True,
+                                                   hippocampal_subfields_T1=False,
+                                                   openmp=self.omp_nthreads),
+                             name='fs_recon3',
+                             n_procs=self.omp_nthreads)
 
         copy_brainmask = Node(
             Function(['in_file', 'fs_dir'], ['fs_dir'], self.copy_mask),
@@ -308,7 +339,7 @@ class NeuroMet:
         return freesurfer
 
 
-    def make_neuromet_fs_workflow(self):
+    def make_freesurfer_wf(self):
 
         # Infosource: Iterate through subject names
         infosource = Node(interface=IdentityInterface(fields=['subject_id']), name="infosource")
@@ -325,16 +356,17 @@ class NeuroMet:
 
         # Datasource: Build subjects' filenames from IDs
         info = dict(
-            mask = [['subject_id', 'session_id', 'anat', 'subject_id', 'session_id', 'mask', 'MP2RAGE_ro_brain_bin.nii.gz']],
-            uni_bias_corr = [['subject_id', 'session_id', 'anat', 'subject_id', 'session_id', 'UNI', 'ro_bfcorr.nii']],
-            den_ro = [['subject_id', 'session_id', 'anat', 'subject_id', 'session_id', 'UNIDEN', 'ro_bfcorr.nii']])
+            mask=[['derivatives/NeuroMET/', 'subject_id', 'session_id', 'anat', 'subject_id', 'session_id', 'desc-UNIDEN_MP2RAGE_ro_brain_bin.nii.gz']],
+            uni_bias_corr=[['derivatives/NeuroMET/', 'subject_id', 'session_id', 'anat', 'subject_id', 'session_id', 'desc-UNI_ro_bfcorr.nii']],
+            den_ro=[['derivatives/NeuroMET/', 'subject_id', 'session_id', 'anat', 'subject_id', 'session_id', 'desc-UNIDEN_ro_bfcorr.nii']],
+            flair=[['', 'subject_id', 'session_id', 'anat', 'subject_id', 'session_id', 'FLAIR.nii.gz']])
 
         datasource = Node(
             interface=DataGrabber(
-                infields=['subject_id', 'session_id', 'mask'], outfields=['mask', 'uni_bias_corr', 'den_ro']),
+                infields=['subject_id', 'session_id', 'mask'], outfields=['mask', 'uni_bias_corr', 'den_ro', 'flair']),
             name='datasource')
-        datasource.inputs.base_directory = self.derivatives_dir
-        datasource.inputs.template = 'sub-NeuroMET%s/ses-0%s/%s/sub-NeuroMET%s_ses-0%s_desc-%s_%s'
+        datasource.inputs.base_directory = self.bids_root
+        datasource.inputs.template = '%ssub-NeuroMET%s/ses-0%s/%s/sub-NeuroMET%s_ses-0%s_%s'
         datasource.inputs.template_args = info
         datasource.inputs.sort_filelist = False
 
@@ -355,6 +387,8 @@ class NeuroMet:
         neuromet_fs.connect(datasource, 'den_ro', comb_imgs, 'uni_brain_den_surr_mas.in_file')
 
         neuromet_fs.connect(comb_imgs, 'uni_brain_den_surr_add.out_file', freesurfer, 'fs_recon1.T1_files')
+        if self.useflair:
+            neuromet_fs.connect(datasource, 'flair',freesurfer, 'fs_recon1.FLAIR_file')
         neuromet_fs.connect(datasource, 'mask', freesurfer, 'fs_mriconv.in_file')
 
         out_dir_source = Node(interface=IdentityInterface(fields=['out_dir'], mandatory_inputs=True), name = 'out_dir_source')
