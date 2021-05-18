@@ -131,17 +131,24 @@ class NeuroMet:
         sink = Node(interface=DataSink(),
                     name='sink')
         sink.inputs.base_directory = os.path.join(self.bids_root, 'derivatives', 'NeuroMET')
-        sink.inputs.substitutions = [('DEN_mp2rage_orig_reoriented_masked_maths', 'mUNIbrain_DENskull_SPMmasked'),
-                                      ('_mp2rage_orig_reoriented_maths_maths_bin', '_brain_bin'),
-                                     ('/_uniden_UNI/', '/anat/'),
-                                     ('/_uniden_UNIDEN/', '/anat/')]
+        sink.inputs.substitutions = [('/_uniden_prefix_derivatives..Siemens.._uniden_suffix_desc-UNIDEN/', '/anat/'),
+                                     ('/_uniden_prefix__uniden_suffix_T1w/', '/anat/')]
         sink.inputs.regexp_substitutions = [(r'_subject_id_2(?P<subid>[0-9][0-9][0-9])T(?P<sesid>[0-9])',
                                              r'sub-NeuroMET\g<subid>/ses-0\g<sesid>'),
-                                            (r'c1(.*)_reoriented_maths_maths_bin.nii.gz', r'\1_ro_brain_bin.nii.gz'),
+                                            (r'c1(.*)_MP2RAGE_reoriented_maths_maths_bin.nii.gz', r'\1_ro_brain_bin.nii.gz'),
                                             (r'c1(.*)_MP2RAGE_reoriented.nii', r'\1_ro_GM_bin.nii'),
                                             (r'c2(.*)_MP2RAGE_reoriented.nii', r'\1_ro_WM_bin.nii'),
                                             (r'c3(.*)_MP2RAGE_reoriented.nii', r'\1_ro_CSF_bin.nii'),
-                                            (r'msub-(.*)_MP2RAGE_reoriented.nii', r'sub-\1_ro_bfcorr.nii')]
+                                            (r'msub-(.*)_MP2RAGE_reoriented.nii', r'sub-\1_ro_bfcorr.nii'),
+                                            (r'c1(.*)_MP2RAGE_reoriented_maths_maths_bin.nii.gz',
+                                             r'\1_ro_brain_bin.nii.gz'),
+                                            (r'c1(.*)_T1w_reoriented.nii', r'\1_desc-UNI_ro_GM_bin.nii'),
+                                            (r'c2(.*)_T1w_reoriented.nii', r'\1_desc-UNI_ro_WM_bin.nii'),
+                                            (r'c3(.*)_T1w_reoriented.nii', r'\1_desc-UNI_ro_CSF_bin.nii'),
+                                            (r'(.*)_T1w_reoriented.nii', r'\1_desc-UNI_ro.nii'),
+                                            (r'msub-(.*)_T1w_reoriented.nii', r'sub-\1_desc-UNI_ro_bfcorr.nii'),
+                                            (r'c1(.*)_T1w_reoriented_maths_maths_bin.nii.gz', r'\1_desc-UNI_ro_brain_bin.nii.gz'),
+                                            ]
         return sink
 
     def make_segment(self):
@@ -192,24 +199,25 @@ class NeuroMet:
         infosource = Node(interface=IdentityInterface(fields=['subject_id']), name="infosource")
         infosource.iterables = ('subject_id', self.subject_list)
 
-        # unidensource, return for every subject uni and den
-        unidensource = Node(interface=IdentityInterface(fields=['uniden']), name="unidensource")
-        unidensource.iterables = ('uniden', ['UNI', 'UNIDEN'])
+        #unidensource, return for every subject uni and den
+        unidensource = Node(interface=IdentityInterface(fields=['uniden_prefix', 'uniden_suffix']), name="unidensource")
+        unidensource.iterables = [('uniden_prefix', ['', 'derivatives/Siemens/']), ('uniden_suffix', ['T1w', 'desc-UNIDEN_MP2RAGE'])]
+        unidensource.synchronize = True
 
         split_sub_str = Node(
             Function(['subject_str'], ['subject_id', 'session_id'], self.split_subject_ses),
             name='split_sub_str')
 
         info = dict(
-            T1w=[['subject_id', 'session_id', 'anat', 'subject_id', 'session_id', 'uniden']]
+            T1w=[['uniden_prefix', 'subject_id', 'session_id', 'anat', 'subject_id', 'session_id', 'uniden_suffix']]
         )
 
         datasource = Node(
             interface=DataGrabber(
-                infields=['subject_id', 'session_id', 'uniden'], outfields=['T1w']),
+                infields=['subject_id', 'session_id', 'uniden_prefix', 'uniden_suffix'], outfields=['T1w']),
             name='datasource')
         datasource.inputs.base_directory = self.bids_root
-        datasource.inputs.template = 'sub-NeuroMET%s/ses-0%s/%s/sub-NeuroMET%s_ses-0%s_desc-%s_MP2RAGE.nii.gz'
+        datasource.inputs.template = '%ssub-NeuroMET%s/ses-0%s/%s/sub-NeuroMET%s_ses-0%s_%s.nii.gz'
         datasource.inputs.template_args = info
         datasource.inputs.sort_filelist = False
 
@@ -221,7 +229,8 @@ class NeuroMet:
         neuromet.connect(infosource, 'subject_id', split_sub_str, 'subject_str')
         neuromet.connect(split_sub_str, 'subject_id', datasource, 'subject_id')
         neuromet.connect(split_sub_str, 'session_id', datasource, 'session_id')
-        neuromet.connect(unidensource, 'uniden', datasource, 'uniden')
+        neuromet.connect(unidensource, 'uniden_prefix', datasource, 'uniden_prefix')
+        neuromet.connect(unidensource, 'uniden_suffix', datasource, 'uniden_suffix')
         neuromet.connect(datasource, 'T1w', segment, 'ro.in_file')
 
         # neuromet.connect()
@@ -325,7 +334,7 @@ class NeuroMet:
 
         # Datasource: Build subjects' filenames from IDs
         info = dict(
-            mask = [['subject_id', 'session_id', 'anat', 'subject_id', 'session_id', 'mask', 'MP2RAGE_ro_brain_bin.nii.gz']],
+            mask = [['subject_id', 'session_id', 'anat', 'subject_id', 'session_id', 'mask', 'ro_brain_bin.nii.gz']],
             uni_bias_corr = [['subject_id', 'session_id', 'anat', 'subject_id', 'session_id', 'UNI', 'ro_bfcorr.nii']],
             den_ro = [['subject_id', 'session_id', 'anat', 'subject_id', 'session_id', 'UNIDEN', 'ro_bfcorr.nii']])
 
@@ -363,12 +372,6 @@ class NeuroMet:
         copy_freesurfer_dir = Node(
             Function(['in_dir', 'sub_id', 'out_dir'], ['out_dir'], self.copy_freesurfer_dir),
             name='copy_freesurfer_dir')
-
-        qdec = Node(interface=QDec(basedir=self.bids_root), name='qdec')
-
-        adj_vol = Node(interface=AdjustVolume(
-            diag_csv='/media/drive_s/AG/AG-Floeel-Imaging/02-User/NEUROMET2/Structural_Analysis_fs7/Diagnosen.csv'
-        ), name='adj_vol')
 
         neuromet_fs.connect(comb_imgs, 'uni_brain_den_surr_add.out_file', sink, '@img')
         #neuromet_fs.connect(infosource, 'subject_id', copy_freesurfer_dir, 'sub_id')

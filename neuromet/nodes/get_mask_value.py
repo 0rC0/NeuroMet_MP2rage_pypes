@@ -65,10 +65,12 @@ class GetMaskValue(BaseInterface):
         import pandas as pd
         mask_file = self.inputs.csv_file
         print(mask_file)
-        df = pd.read_excel(mask_file, header=None, names=['ids', 'masks', 'note'])
+        df = pd.read_csv(mask_file, header=0, sep='\t')
         print(df)
-        d = dict(zip(df.ids.values, df.masks.values))
-        return d['NeuroMET' + self.inputs.subject_id]
+        sid = self.inputs.subject_id
+        d = dict(zip(df.participant.values, df['mask_(UNI_or_DEN)'].values))
+        out = d['NeuroMET' + sid]
+        return 'UNI' if out == 'UNI' else 'UNIDEN' if out == 'DEN' else ''
 
     def _run_interface(self, runtime, correct_return_codes=(0,)):
         mask = self.get_mask_name()
