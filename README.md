@@ -13,5 +13,9 @@ This pipeline processes the T1w images to achieve an image with the brain from t
 
 ## Usage
 
+<<<<<<< HEAD
  See [JupyterNorebook](notebooks/NeuroMET.ipynb).
  
+=======
+WIP
+>>>>>>> master
