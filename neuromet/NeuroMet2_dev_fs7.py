@@ -6,12 +6,12 @@ import nipype.interfaces.spm as spm
 import nipype.interfaces.matlab as mlab
 import os
 import json
-from nipype.interfaces.utility import Function
+from nipype.interfaces.utility import Function, Merge
 from nipype.algorithms.misc import Gunzip
 from .nodes.fssegmentHA_T1 import SegmentHA_T1
 from .nodes.qdec import QDec
 from .nodes.adj_vol import AdjustVolume
-from .nodes.get_mask_value import GetMaskValue
+from .nodes.utils import GetMaskValue, SumStrings, OsPathJoin
 from .nodes.parse_scanner_dir import ParseScannerDir
 
 
@@ -132,7 +132,9 @@ class NeuroMet:
                     name='sink')
         sink.inputs.base_directory = os.path.join(self.bids_root, 'derivatives', 'NeuroMET')
         sink.inputs.substitutions = [('/_uniden_prefix_derivatives..Siemens.._uniden_suffix_desc-UNIDEN/', '/anat/'),
-                                     ('/_uniden_prefix__uniden_suffix_T1w/', '/anat/')]
+                                     ('/_uniden_prefix_derivatives..Siemens.._uniden_suffix_desc-UNIDEN_MP2RAGE/', '/anat/'),
+                                     ('/_uniden_prefix__uniden_suffix_T1w/', '/anat/'),
+                                     ('/recon_all', '/anat/recon_all')]
         sink.inputs.regexp_substitutions = [(r'_subject_id_2(?P<subid>[0-9][0-9][0-9])T(?P<sesid>[0-9])',
                                              r'sub-NeuroMET\g<subid>/ses-0\g<sesid>'),
                                             (r'c1(.*)_MP2RAGE_reoriented_maths_maths_bin.nii.gz', r'\1_ro_brain_bin.nii.gz'),
@@ -148,7 +150,7 @@ class NeuroMet:
                                             (r'(.*)_T1w_reoriented.nii', r'\1_desc-UNI_ro.nii'),
                                             (r'msub-(.*)_T1w_reoriented.nii', r'sub-\1_desc-UNI_ro_bfcorr.nii'),
                                             (r'c1(.*)_T1w_reoriented_maths_maths_bin.nii.gz', r'\1_desc-UNI_ro_brain_bin.nii.gz'),
-                                            ]
+                                            (r'(.*)-UNIDEN_ro_bfcorr_masked_maths.nii.gz', r'anat/\1_UNIbrain_DENskull.nii.gz'),]
         return sink
 
     def make_segment(self):
@@ -368,15 +370,16 @@ class NeuroMet:
 
         out_dir_source = Node(interface=IdentityInterface(fields=['out_dir'], mandatory_inputs=True), name = 'out_dir_source')
         out_dir_source.inputs.out_dir = self.bids_root
-
-        copy_freesurfer_dir = Node(
-            Function(['in_dir', 'sub_id', 'out_dir'], ['out_dir'], self.copy_freesurfer_dir),
-            name='copy_freesurfer_dir')
+        make_list_str =Node(interface=Merge(2), name='make_list_of_paths')
+        merge_strs = Node(interface=OsPathJoin(), name='merge_sub_id_dir')
 
         neuromet_fs.connect(comb_imgs, 'uni_brain_den_surr_add.out_file', sink, '@img')
         #neuromet_fs.connect(infosource, 'subject_id', copy_freesurfer_dir, 'sub_id')
         #neuromet_fs.connect(freesurfer, 'segment_hp.subjects_dir', copy_freesurfer_dir, 'in_dir')
-        neuromet_fs.connect(freesurfer, 'segment_hp.subjects_dir', sink, '@recon_all')
+        neuromet_fs.connect(freesurfer, 'segment_hp.subjects_dir', make_list_str, 'in1')
+        neuromet_fs.connect(freesurfer, 'segment_hp.subject_id', make_list_str, 'in2')
+        neuromet_fs.connect(make_list_str, 'out', merge_strs, 'str_list')
+        neuromet_fs.connect(merge_strs, 'out_path', sink, '@recon_all')
         #neuromet_fs.connect(out_dir_source, 'out_dir', copy_freesurfer_dir, 'out_dir')
 
         #ToDo:

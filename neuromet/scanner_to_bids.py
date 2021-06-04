@@ -10,7 +10,7 @@ from nipype.algorithms.misc import Gunzip
 from .nodes.fssegmentHA_T1 import SegmentHA_T1 # freesurfer 7 hippocampus segmentation
 from .nodes.qdec import QDec
 from .nodes.adj_vol import AdjustVolume
-from .nodes.get_mask_value import GetMaskValue
+from .nodes.utils import GetMaskValue
 from .nodes.parse_scanner_dir import ParseScannerDir
 from nipype.interfaces.utility import Rename
 
@@ -69,7 +69,8 @@ class ScannerToBIDS:
                                             (r'_subject_str_2(?P<subid>[0-9][0-9][0-9])T(?P<sesid>[0-9])/boldmag2',
                                              r'sub-NeuroMET\g<subid>/ses-0\g<sesid>/fmap/sub-NeuroMET\g<subid>_ses-0\g<sesid>_magnitude2.nii.gz'),
                                             (r'_subject_str_2(?P<subid>[0-9][0-9][0-9])T(?P<sesid>[0-9])/boldphdiff',
-                                             r'sub-NeuroMET\g<subid>/ses-0\g<sesid>/fmap/sub-NeuroMET\g<subid>_ses-0\g<sesid>_phasediff.nii.gz')]
+                                             r'sub-NeuroMET\g<subid>/ses-0\g<sesid>/fmap/sub-NeuroMET\g<subid>_ses-0\g<sesid>_phasediff.nii.gz'),
+                                            ]
         #    (r'c1{prefix}(.*).UNI_brain_bin.nii.gz'.format(prefix=self.project_prefix),
         #                                      r'{prefix}\1.UNI_brain_bin.nii.gz'.format(prefix=self.project_prefix)),
         #                                     (r'c1{prefix}(.*).DEN_brain_bin.nii.gz'.format(prefix=self.project_prefix),

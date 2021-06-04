@@ -36,10 +36,6 @@ from nipype.interfaces.freesurfer.utils import copy2subjdir
 __docformat__ = "restructuredtext"
 iflogger = logging.getLogger("nipype.interface")
 
-# Keeping this to avoid breaking external programs that depend on it, but
-# this should not be used internally
-FSVersion = Info.looseversion().vstring
-
 class GetMaskValueInputSpec(BaseInterfaceInputSpec):
 
 
@@ -81,4 +77,74 @@ class GetMaskValue(BaseInterface):
 
         outputs = self._outputs().get()
         outputs["mask_value"] = getattr(self, '_mask')
+        return outputs
+
+class SumStringsInputSpec(BaseInterfaceInputSpec):
+
+
+    str1 = traits.Str(argstr="%s", desc="string1", mandatory=True)
+    str2 = traits.Str(argstr="%s", desc="string2", mandatory=True)
+
+
+class SumStringsOutputSpec(TraitedSpec):
+
+    out_str = traits.Str(desc="Output string, sum of the twos as input")
+
+
+class SumStrings(BaseInterface):
+    """
+    ToDo: Simple interface to sum two strings. i.e. Freesurfer subjects_dir and subject_id for the sink
+    """
+
+    input_spec = SumStringsInputSpec
+    output_spec = SumStringsOutputSpec
+
+
+    def _run_interface(self, runtime, correct_return_codes=(0,)):
+        out_str = self.inputs.str1 + self.inputs.str2
+        setattr(self, '_out_str', out_str)
+        return runtime
+
+    def _list_outputs(self):
+
+        outputs = self._outputs().get()
+        outputs["out_str"] = getattr(self, '_out_str')
+        return outputs
+
+class OsPathJoinInputSpec(BaseInterfaceInputSpec):
+
+
+    str_list = traits.List(
+        traits.Str(desc="strings to join as path", mandatory=True))
+
+
+
+class OsPathJoinOutputSpec(TraitedSpec):
+
+    out_path = traits.Str(desc="Output path as string")
+
+
+class OsPathJoin(BaseInterface):
+    """
+    ToDo: Simple interface to sum two strings. i.e. Freesurfer subjects_dir and subject_id for the sink
+    """
+
+    input_spec = OsPathJoinInputSpec
+    output_spec = OsPathJoinOutputSpec
+
+    def __ospathjoin_recursive(self, l):
+        if len(l) > 1:
+            return (os.path.join(l[0], self.__ospathjoin_recursive(l[1:])))
+        else:
+            return l[0]
+
+    def _run_interface(self, runtime, correct_return_codes=(0,)):
+        out_path = self.__ospathjoin_recursive(self.inputs.str_list)
+        setattr(self, '_out_path', out_path)
+        return runtime
+
+    def _list_outputs(self):
+
+        outputs = self._outputs().get()
+        outputs["out_path"] = getattr(self, '_out_path')
         return outputs
