@@ -132,17 +132,17 @@ class NeuroMet:
                     name='sink')
         sink.inputs.base_directory = os.path.join(self.bids_root, 'derivatives', 'NeuroMET')
         sink.inputs.substitutions = [('/_uniden_prefix_derivatives..Siemens.._uniden_suffix_desc-UNIDEN/', '/anat/'),
-                                     ('/_uniden_prefix_derivatives..Siemens.._uniden_suffix_desc-UNIDEN_MP2RAGE/', '/anat/'),
                                      ('/_uniden_prefix__uniden_suffix_T1w/', '/anat/'),
-                                     ('/recon_all', '/anat/recon_all')]
-        sink.inputs.regexp_substitutions = [(r'_subject_id_2(?P<subid>[0-9][0-9][0-9])T(?P<sesid>[0-9])',
+                                     ('/recon_all', '/anat/recon_all'),
+                                     ('_T1w_', '_desc-UNI_')]
+        sink.inputs.regexp_substitutions = [(r'_subject_id_\d(?P<subid>[0-9][0-9][0-9])T(?P<sesid>[0-9])',
                                              r'sub-NeuroMET\g<subid>/ses-0\g<sesid>'),
-                                            (r'c1(.*)_MP2RAGE_reoriented_maths_maths_bin.nii.gz', r'\1_ro_brain_bin.nii.gz'),
-                                            (r'c1(.*)_MP2RAGE_reoriented.nii', r'\1_ro_GM_bin.nii'),
-                                            (r'c2(.*)_MP2RAGE_reoriented.nii', r'\1_ro_WM_bin.nii'),
-                                            (r'c3(.*)_MP2RAGE_reoriented.nii', r'\1_ro_CSF_bin.nii'),
-                                            (r'msub-(.*)_MP2RAGE_reoriented.nii', r'sub-\1_ro_bfcorr.nii'),
-                                            (r'c1(.*)_MP2RAGE_reoriented_maths_maths_bin.nii.gz',
+                                            (r'c1(.*)_reoriented_maths_maths_bin.nii.gz', r'\1_ro_brain_bin.nii.gz'),
+                                            (r'c1(.*)_reoriented.nii', r'\1_ro_GM_bin.nii'),
+                                            (r'c2(.*)_reoriented.nii', r'\1_ro_WM_bin.nii'),
+                                            (r'c3(.*)_reoriented.nii', r'\1_ro_CSF_bin.nii'),
+                                            (r'msub-(.*)_reoriented.nii', r'sub-\1_ro_bfcorr.nii'),
+                                            (r'c1(.*)_reoriented_maths_maths_bin.nii.gz',
                                              r'\1_ro_brain_bin.nii.gz'),
                                             (r'c1(.*)_T1w_reoriented.nii', r'\1_desc-UNI_ro_GM_bin.nii'),
                                             (r'c2(.*)_T1w_reoriented.nii', r'\1_desc-UNI_ro_WM_bin.nii'),
@@ -203,7 +203,7 @@ class NeuroMet:
 
         #unidensource, return for every subject uni and den
         unidensource = Node(interface=IdentityInterface(fields=['uniden_prefix', 'uniden_suffix']), name="unidensource")
-        unidensource.iterables = [('uniden_prefix', ['', 'derivatives/Siemens/']), ('uniden_suffix', ['T1w', 'desc-UNIDEN_MP2RAGE'])]
+        unidensource.iterables = [('uniden_prefix', ['', 'derivatives/Siemens/']), ('uniden_suffix', ['T1w', 'desc-UNIDEN'])]
         unidensource.synchronize = True
 
         split_sub_str = Node(

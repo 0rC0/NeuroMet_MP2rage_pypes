@@ -55,18 +55,21 @@ class ParseScannerDir(BaseInterface):
     def _parse_field_maps(self, fm):
         # fm: list of fieldmaps containig folders, they should be 2
         # return: dict with filenames {'mangitude1': 'filepath'}
-        d = {'magnitude1': '', 'magnitude2': '', 'phasediff': ''}
-        assert len(fm) == 2
-        for i in fm:
-            i = os.path.join(self.scanner_dir, i)
-            #print(i)
-            if len(os.listdir(i)) == 1:
-                d['phasediff'] = os.path.join(i, os.listdir(i)[0])
-            if len(os.listdir(i)) == 2:
-                d['magnitude1'] = os.path.join(i, [i for i in os.listdir(i) if '0001g' in i][0])
-                d['magnitude2'] = os.path.join(i, [i for i in os.listdir(i) if '0001-e2' in i][0])
-        #print(d)
-        return d
+        try:
+            d = {'magnitude1': '', 'magnitude2': '', 'phasediff': ''}
+            assert len(fm) == 2
+            for i in fm:
+                i = os.path.join(self.scanner_dir, i)
+                #print(i)
+                if len(os.listdir(i)) == 1:
+                    d['phasediff'] = os.path.join(i, os.listdir(i)[0])
+                if len(os.listdir(i)) == 2:
+                    d['magnitude1'] = os.path.join(i, [i for i in os.listdir(i) if '0001g' in i][0])
+                    d['magnitude2'] = os.path.join(i, [i for i in os.listdir(i) if '0001-e2' in i][0])
+            #print(d)
+            return d
+        except:
+            return None
 
     def _parse_scanner_dir(self):
         # Make scanner dir complete path
