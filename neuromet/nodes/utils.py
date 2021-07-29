@@ -60,9 +60,7 @@ class GetMaskValue(BaseInterface):
     def get_mask_name(self):
         import pandas as pd
         mask_file = self.inputs.csv_file
-        print(mask_file)
         df = pd.read_csv(mask_file, header=0, sep='\t')
-        print(df)
         sid = self.inputs.subject_id
         d = dict(zip(df.participant.values, df['mask_(UNI_or_DEN)'].values))
         out = d['NeuroMET' + sid]

@@ -55,21 +55,22 @@ class ParseScannerDir(BaseInterface):
     def _parse_field_maps(self, fm):
         # fm: list of fieldmaps containig folders, they should be 2
         # return: dict with filenames {'mangitude1': 'filepath'}
-        try:
-            d = {'magnitude1': '', 'magnitude2': '', 'phasediff': ''}
-            assert len(fm) == 2
-            for i in fm:
-                i = os.path.join(self.scanner_dir, i)
-                #print(i)
-                if len(os.listdir(i)) == 1:
-                    d['phasediff'] = os.path.join(i, os.listdir(i)[0])
-                if len(os.listdir(i)) == 2:
-                    d['magnitude1'] = os.path.join(i, [i for i in os.listdir(i) if '0001g' in i][0])
-                    d['magnitude2'] = os.path.join(i, [i for i in os.listdir(i) if '0001-e2' in i][0])
-            #print(d)
-            return d
-        except:
-            return None
+        #try:
+        d = {'magnitude1': '', 'magnitude2': '', 'phasediff': ''}
+        assert len(fm) == 2
+        for i in fm:
+            i = os.path.join(self.scanner_dir, i)
+            #print(i)
+            if len(os.listdir(i)) == 1:
+                d['phasediff'] = os.path.join(i, os.listdir(i)[0])
+            if len(os.listdir(i)) == 2:
+                #print(os.listdir(i))
+                d['magnitude1'] = os.path.join(i, [i for i in os.listdir(i) if '0001g' in i][0])
+                d['magnitude2'] = os.path.join(i, [i for i in os.listdir(i) if '0001-e2' in i or '0001-2'][0])
+        #print(d)
+        return d
+        #except:
+        #    return None
 
     def _parse_scanner_dir(self):
         # Make scanner dir complete path
@@ -84,41 +85,57 @@ class ParseScannerDir(BaseInterface):
         d = dict()
         # find corresponding dirs and grab the nifti if they are length 1
         for s in strs:
-            d[s] = [i for i in os.listdir(scanner_dir) if s in i]
-            if len(d[s]) == 0:
-                d[s] = ''
-            elif len(d[s]) == 1:
-                d[s] = d[s][0]
-                src_dir = os.path.join(scanner_dir, d[s])
-                #print(s)
-                #print([i for i in os.listdir(src_dir) if i.endswith('.nii.gz')])
-                d[s] = os.path.join(src_dir, [i for i in os.listdir(src_dir) if i.endswith('.nii.gz') or i.endswith('.nii')][0])  # take the nifti
-            elif len(d[s]) > 1 and 'field_map' in s:
-                #print(s)
-                d[s] = self._parse_field_maps(d[s])
+            try:
+                d[s] = [i for i in os.listdir(scanner_dir) if s in i]
+                if len(d[s]) == 0:
+                    d[s] = ''
+                elif len(d[s]) == 1:
+                    d[s] = d[s][0]
+                    src_dir = os.path.join(scanner_dir, d[s])
+                    #print(s)
+                    #print([i for i in os.listdir(src_dir) if i.endswith('.nii.gz')])
+                    d[s] = os.path.join(src_dir, [i for i in os.listdir(src_dir) if i.endswith('.nii.gz') or i.endswith('.nii')][0])  # take the nifti
+                elif len(d[s]) > 1 and 'field_map' in s:
+                    #print(s)
+                    d[s] = self._parse_field_maps(d[s])
+            except:
+                print('error with {}'.format(s))
         return d
 
     def _run_interface(self, runtime, correct_return_codes=(0,)):
 
         d = self._parse_scanner_dir()
         #print(d)
-        setattr(self, '_uni', d['UNI_Image'])
-        setattr(self, '_uni_den', d['UNI_DEN'])
-        setattr(self, '_flair', d['FLAIR'])
-        setattr(self, '_bold', d['bold'])
-        setattr(self, '_boldmag1', d['gre_field_mapping_0']['magnitude1'])
-        setattr(self, '_boldmag2', d['gre_field_mapping_0']['magnitude2'])
-        setattr(self, '_boldphdiff', d['gre_field_mapping_0']['phasediff'])
+        try:
+            setattr(self, '_uni', d['UNI_Image'])
+            setattr(self, '_uni_den', d['UNI_DEN'])
+        except:
+            pass
+        try:
+            setattr(self, '_flair', d['FLAIR'])
+            setattr(self, '_bold', d['bold'])
+            setattr(self, '_boldmag1', d['gre_field_mapping_0']['magnitude1'])
+            setattr(self, '_boldmag2', d['gre_field_mapping_0']['magnitude2'])
+            setattr(self, '_boldphdiff', d['gre_field_mapping_0']['phasediff'])
+        except:
+            pass
+
         return runtime
 
     def _list_outputs(self):
 
         outputs = self._outputs().get()
-        outputs["uni"] = getattr(self, '_uni')
-        outputs["uniden"] = getattr(self, '_uni_den')
-        outputs["bold"] = getattr(self, '_bold')
-        outputs["flair"] = getattr(self, '_flair')
-        outputs["boldmag1"] = getattr(self, '_boldmag1')
-        outputs["boldmag2"] = getattr(self, '_boldmag2')
-        outputs["boldphdiff"] = getattr(self, '_boldphdiff')
+        try:
+            outputs["uni"] = getattr(self, '_uni')
+            outputs["uniden"] = getattr(self, '_uni_den')
+        except:
+            pass
+        try:
+            outputs["bold"] = getattr(self, '_bold')
+            outputs["flair"] = getattr(self, '_flair')
+            outputs["boldmag1"] = getattr(self, '_boldmag1')
+            outputs["boldmag2"] = getattr(self, '_boldmag2')
+            outputs["boldphdiff"] = getattr(self, '_boldphdiff')
+        except:
+            pass
         return outputs

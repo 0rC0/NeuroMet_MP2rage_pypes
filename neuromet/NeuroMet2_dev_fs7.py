@@ -153,6 +153,13 @@ class NeuroMet:
                                             (r'(.*)-UNIDEN_ro_bfcorr_masked_maths.nii.gz', r'anat/\1_UNIbrain_DENskull.nii.gz'),]
         return sink
 
+    def make_fs_sink(self):
+        sink = Node(interface=DataSink(), name='fs_sink')
+        sink.inputs.base_directory = os.path.join(self.bids_root, 'derivatives', 'NeuroMET_FS')
+        sink.inputs.regexp_substitutions = [(r'_subject_id_\d(?P<subid>[0-9][0-9][0-9])T(?P<sesid>[0-9])/recon_all',
+                                             r'sub-NeuroMET\g<subid>/sub-NeuroMET\g<subid>_T\g<sesid>.reconall')]
+        return sink
+
     def make_segment(self):
         # Ref: http://nipype.readthedocs.io/en/0.12.1/interfaces/generated/nipype.interfaces.fsl.utils.html#reorient2std
         ro = Node(interface=fsl.Reorient2Std(), name='ro')
@@ -350,6 +357,7 @@ class NeuroMet:
         datasource.inputs.sort_filelist = False
 
         sink = self.make_sink()
+        fs_sink = self.make_fs_sink()
 
         comb_imgs = self.make_comb_imgs()
 
@@ -379,7 +387,7 @@ class NeuroMet:
         neuromet_fs.connect(freesurfer, 'segment_hp.subjects_dir', make_list_str, 'in1')
         neuromet_fs.connect(freesurfer, 'segment_hp.subject_id', make_list_str, 'in2')
         neuromet_fs.connect(make_list_str, 'out', merge_strs, 'str_list')
-        neuromet_fs.connect(merge_strs, 'out_path', sink, '@recon_all')
+        neuromet_fs.connect(merge_strs, 'out_path', fs_sink, '@recon_all')
         #neuromet_fs.connect(out_dir_source, 'out_dir', copy_freesurfer_dir, 'out_dir')
 
         #ToDo:
