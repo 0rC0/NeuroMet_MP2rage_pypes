@@ -127,3 +127,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+/test/NeuroMET/
+/test/tmp/
+/test/tmp/

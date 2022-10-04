@@ -17,10 +17,9 @@ from .nodes.parse_scanner_dir import ParseScannerDir
 
 class NeuroMet:
 
-    def __init__(self, sublist, raw_data_dir, temp_dir, bids_root, omp_nthreads):
+    def __init__(self, sublist, temp_dir, bids_root, omp_nthreads):
 
         self.subject_list = sublist #self.mod_sublist(sublist)
-        self.raw_data_dir = raw_data_dir
         self.temp_dir = temp_dir
         self.bids_root = bids_root
         self.omp_nthreads = omp_nthreads
@@ -193,7 +192,7 @@ class NeuroMet:
     def split_subject_ses(subject_str):
         # Split the input $subjectT$session in subject and session
         sub_str=str(subject_str)
-        return subject_str.split('T')[0][1:], subject_str.split('T')[1]
+        return subject_str.split('T')[0], subject_str.split('T')[1]
 
     def make_neuromet1_workflow(self):
 
@@ -203,7 +202,7 @@ class NeuroMet:
 
         #unidensource, return for every subject uni and den
         unidensource = Node(interface=IdentityInterface(fields=['uniden_prefix', 'uniden_suffix']), name="unidensource")
-        unidensource.iterables = [('uniden_prefix', ['', 'derivatives/Siemens/']), ('uniden_suffix', ['T1w', 'desc-UNIDEN_MP2RAGE'])]
+        unidensource.iterables = [('uniden_prefix', ['', 'derivatives/Siemens/']), ('uniden_suffix', ['T1w', 'desc-UNIDEN'])]
         unidensource.synchronize = True
 
         split_sub_str = Node(
