@@ -9,7 +9,6 @@ from nipype.interfaces.utility import Function
 from nipype.algorithms.misc import Gunzip
 from .nodes.fssegmentHA_T1 import SegmentHA_T1 # freesurfer 7 hippocampus segmentation
 from .nodes.qdec import QDec
-from .nodes.adj_vol import AdjustVolume
 from .nodes.utils import GetMaskValue
 from .nodes.parse_scanner_dir import ParseScannerDir
 from nipype.interfaces.utility import Rename

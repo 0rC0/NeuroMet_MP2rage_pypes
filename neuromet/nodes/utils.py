@@ -40,7 +40,7 @@ class GetMaskValueInputSpec(BaseInterfaceInputSpec):
 
 
     subject_id = traits.Str(argstr="%s", desc="subject id", mandatory=True)
-    csv_file = File(desc="Excel .XLSX file with list of mask", mandatory=True)
+    csv_file = File(desc="TSV file with masks list", mandatory=True)
 
 
 class GetMaskValueOutputSpec(TraitedSpec):
@@ -64,9 +64,9 @@ class GetMaskValue(BaseInterface):
         df = pd.read_csv(mask_file, header=0, sep='\t')
         print(df)
         sid = self.inputs.subject_id
-        d = dict(zip(df.participant.values, df['mask_(UNI_or_DEN)'].values))
-        out = d['NeuroMET' + sid]
-        return 'UNI' if out == 'UNI' else 'UNIDEN' if out == 'DEN' else ''
+        d = dict(zip(df.participant.values, df['mask_(UNI_or_UNIDEN)'].values))
+        out = d['NeuroMET' + sid].rstrip().lstrip()
+        return out
 
     def _run_interface(self, runtime, correct_return_codes=(0,)):
         mask = self.get_mask_name()

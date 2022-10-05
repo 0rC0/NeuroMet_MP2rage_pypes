@@ -9,8 +9,6 @@ import json
 from nipype.interfaces.utility import Function, Merge
 from nipype.algorithms.misc import Gunzip
 from .nodes.fssegmentHA_T1 import SegmentHA_T1
-from .nodes.qdec import QDec
-from .nodes.adj_vol import AdjustVolume
 from .nodes.utils import GetMaskValue, SumStrings, OsPathJoin
 from .nodes.parse_scanner_dir import ParseScannerDir
 
@@ -134,20 +132,20 @@ class NeuroMet:
                                      ('/_uniden_prefix_derivatives..Siemens.._uniden_suffix_desc-UNIDEN_MP2RAGE/', '/anat/'),
                                      ('/_uniden_prefix__uniden_suffix_T1w/', '/anat/'),
                                      ('/recon_all', '/anat/recon_all')]
-        sink.inputs.regexp_substitutions = [(r'_subject_id_2(?P<subid>[0-9][0-9][0-9])T(?P<sesid>[0-9])',
+        sink.inputs.regexp_substitutions = [(r'_subject_id_(?P<subid>[0-9][0-9][0-9])T(?P<sesid>[0-9])',
                                              r'sub-NeuroMET\g<subid>/ses-0\g<sesid>'),
-                                            (r'c1(.*)_MP2RAGE_reoriented_maths_maths_bin.nii.gz', r'\1_ro_brain_bin.nii.gz'),
-                                            (r'c1(.*)_MP2RAGE_reoriented.nii', r'\1_ro_GM_bin.nii'),
-                                            (r'c2(.*)_MP2RAGE_reoriented.nii', r'\1_ro_WM_bin.nii'),
-                                            (r'c3(.*)_MP2RAGE_reoriented.nii', r'\1_ro_CSF_bin.nii'),
-                                            (r'msub-(.*)_MP2RAGE_reoriented.nii', r'sub-\1_ro_bfcorr.nii'),
-                                            (r'c1(.*)_MP2RAGE_reoriented_maths_maths_bin.nii.gz',
+                                            (r'c1(.*)_UNIDEN_reoriented_maths_maths_bin.nii.gz', r'\1_ro_brain_bin.nii.gz'),
+                                            (r'c1(.*)_UNIDEN_reoriented.nii', r'\1_ro_GM_bin.nii'),
+                                            (r'c2(.*)_UNIDEN_reoriented.nii', r'\1_ro_WM_bin.nii'),
+                                            (r'c3(.*)_UNIDEN_reoriented.nii', r'\1_ro_CSF_bin.nii'),
+                                            (r'msub-(.*)-UNIDEN_reoriented.nii', r'sub-\1-UNIDEN_ro_bfcorr.nii'),
+                                            (r'c1(.*)_UNIDEN_reoriented_maths_maths_bin.nii.gz',
                                              r'\1_ro_brain_bin.nii.gz'),
                                             (r'c1(.*)_T1w_reoriented.nii', r'\1_desc-UNI_ro_GM_bin.nii'),
                                             (r'c2(.*)_T1w_reoriented.nii', r'\1_desc-UNI_ro_WM_bin.nii'),
                                             (r'c3(.*)_T1w_reoriented.nii', r'\1_desc-UNI_ro_CSF_bin.nii'),
                                             (r'(.*)_T1w_reoriented.nii', r'\1_desc-UNI_ro.nii'),
-                                            (r'msub-(.*)_T1w_reoriented.nii', r'sub-\1_desc-UNI_ro_bfcorr.nii'),
+                                            (r'msub-(.*)-UNI_ro.nii', r'sub-\1-UNI_ro_bfcorr.nii'),
                                             (r'c1(.*)_T1w_reoriented_maths_maths_bin.nii.gz', r'\1_desc-UNI_ro_brain_bin.nii.gz'),
                                             (r'(.*)-UNIDEN_ro_bfcorr_masked_maths.nii.gz', r'anat/\1_UNIbrain_DENskull.nii.gz'),]
         return sink

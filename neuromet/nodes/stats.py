@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
-
-
 """
-Emulate Freesurfer QDec wrapping *stats2table commands
+Extract Volume statistics from recon-all segmentations
 """
 import os
 import glob
@@ -21,32 +19,32 @@ __docformat__ = "restructuredtext"
 iflogger = logging.getLogger("nipype.interface")
 
 
-class QDecInputSpec(BaseInterfaceInputSpec):
+class StatsInputSpec(BaseInterfaceInputSpec):
 
     basedir = traits.Str(desc="Base directory", argstr="%s", mandatory=True)
-    fs_dir_template = traits.Str("*/*.freesurfer", argstr="%s", desc="Freesurfer directory template, default sub*/*.freesurfer", usedefault = True)
+    fs_dir_template = traits.Str("sub*/*.freesurfer", argstr="%s", desc="Freesurfer directory template, default sub*/*.freesurfer", usedefault = True)
     devnull = traits.Str(desc="just a not-used input to put the node after another node")
 
-class QDecOutputSpec(TraitedSpec):
+class StatsOutputSpec(TraitedSpec):
 
     stats_directory = Directory(desc="stat_tables directory", mandatory=True)
     stdout = traits.List(traits.Str(), desc="stdout messages")
     stderr = traits.List(traits.Str(), desc="stderr messages")
 
 
-class QDec(BaseInterface):
+class Stats(BaseInterface):
     """
-    from pipeline.nodes import qdec
-    q = qdec.QDec()
+    from pipeline.nodes import stats
+    q = Stats.Stats()
     q.inputs.basedir = '' # accepts path like /dir for structure like /dir/sub-001/sub-001.freesurfer
     q.run().outputs.stats_directory # return /dir/stat_tables
     """
 
-    input_spec = QDecInputSpec
-    output_spec = QDecOutputSpec
+    input_spec = StatsInputSpec
+    output_spec = StatsOutputSpec
 
     def __make_sublist(self):
-        sublist = glob.glob(self.inputs.basedir + '/*/*.freesurfer')
+        sublist = glob.glob(self.inputs.basedir + self.inputs.fs_dir_template)
         return sublist
 
     def _run_interface(self, runtime, correct_return_codes=(0,)):
