@@ -1,4 +1,8 @@
 
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7181045.svg)](https://doi.org/10.5281/zenodo.7181045)
+
+
 # NeuroMET MP2RAGE pipeline
 
 Structural preprocesing pipeline for MP2Rage
